@@ -1,0 +1,2318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoltaBill</title>
+  <meta name="description" content="Professional GST Invoice & Quotation Generator" />
+  <meta name="theme-color" content="#1a3a5c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="VoltaBill" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+  <script src="db.js"></script>
+  <script src="ai.js"></script>
+  <style>
+    :root {
+      --navy: #1a3a5c;
+      --navy-light: #234d78;
+      --gold: #c9a84c;
+      --gold-light: #e8c96a;
+      --bg: #f0f2f5;
+      --white: #ffffff;
+      --border: #d0d7e2;
+      --text: #1a2638;
+      --text-light: #4a5a70;
+      --red: #c0392b;
+      --green: #27ae60;
+      --shadow: 0 2px 12px rgba(26,58,92,0.10);
+      --shadow-lg: 0 8px 32px rgba(26,58,92,0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      background: var(--navy);
+      color: white;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-lg);
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; }
+    .topbar-logo {
+      width: 32px; height: 32px;
+      background: var(--gold);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: var(--navy);
+    }
+    .topbar h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.3px; }
+    .topbar-actions { display: flex; gap: 8px; }
+    .btn {
+      border: none; cursor: pointer; border-radius: 6px;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      padding: 7px 16px; transition: all 0.15s;
+    }
+    .btn-ghost { background: transparent; color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.25); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: white; }
+    .btn-gold { background: var(--gold); color: var(--navy); font-weight: 600; }
+    .btn-gold:hover { background: var(--gold-light); }
+    .btn-navy { background: var(--navy); color: white; }
+    .btn-navy:hover { background: var(--navy-light); }
+    .btn-danger { background: #f8d7d7; color: var(--red); }
+    .btn-danger:hover { background: #f5c0c0; }
+    .btn-success { background: #d4f0df; color: var(--green); font-weight: 600; }
+    .btn-success:hover { background: #bde8cf; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+    .btn-icon { padding: 7px 10px; }
+
+    /* ── TOGGLE ── */
+    .mode-toggle {
+      display: flex; background: rgba(255,255,255,0.12);
+      border-radius: 6px; padding: 2px; gap: 2px;
+    }
+    .mode-btn {
+      padding: 5px 14px; border-radius: 4px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: none; background: transparent;
+      color: rgba(255,255,255,0.65); transition: all 0.15s; font-family: inherit;
+    }
+    .mode-btn.active { background: var(--gold); color: var(--navy); }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    /* ════ HAMBURGER MENU ════ */
+    .hamburger-btn {
+      display: none;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      color: white; border-radius: 6px; padding: 6px 12px;
+      font-size: 18px; cursor: pointer; line-height: 1;
+    }
+    .desktop-actions { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+    #hamburger-menu {
+      display: none; position: absolute; top: 56px; right: 12px;
+      background: white; border-radius: 12px; min-width: 220px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 9999;
+      overflow: hidden; border: 1px solid #e0e7ef;
+    }
+    #hamburger-menu.open { display: block; }
+    #hamburger-menu button {
+      display: block; width: 100%; padding: 13px 18px;
+      background: none; border: none; text-align: left;
+      font-size: 14px; font-family: 'IBM Plex Sans',sans-serif;
+      color: #1a2638; cursor: pointer; border-bottom: 1px solid #f0f4f8;
+      font-weight: 500;
+    }
+    #hamburger-menu button:last-child { border-bottom: none; }
+    #hamburger-menu button:hover { background: #f0f4f8; }
+    #hamburger-menu button:active { background: #e8edf5; }
+
+    /* ════ RESPONSIVE — TABLET (max 768px) ════ */
+    @media(max-width:768px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .hamburger-btn { display: block !important; }
+      .desktop-actions { display: none !important; }
+      .container { padding: 12px 10px; }
+      .topbar { padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
+      .topbar h1 { font-size: 15px; }
+      .topbar-actions { gap: 4px; flex-wrap: wrap; }
+      .topbar-actions .btn { padding: 4px 8px; font-size: 11px; }
+      .mode-btn { padding: 4px 10px; font-size: 11px; }
+      .card-body { padding: 12px; }
+      .card-header { padding: 10px 12px; }
+    }
+
+    /* ════ RESPONSIVE — MOBILE (max 480px) ════ */
+    @media(max-width:480px) {
+      .topbar { padding: 8px 10px; }
+      .topbar h1 { font-size: 13px; }
+      .topbar-logo { width:26px; height:26px; font-size:12px; }
+      
+      /* Hide Help/About text on very small screens */
+      .topbar-actions .btn-ghost:nth-child(2)::after { content: ''; }
+      
+      /* Items table — card style on mobile */
+      .items-header { display: none; }
+      .item-row {
+        display: flex; flex-direction: column;
+        gap: 8px; padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px; margin-bottom: 8px;
+        background: #fafcff;
+      }
+      .item-row input, .item-row select { 
+        width: 100%; box-sizing: border-box;
+        padding: 8px 10px; font-size: 14px;
+      }
+      .item-amount { text-align: left; font-size: 14px; padding: 4px 0; }
+
+      /* GST & Total summary */
+      .grid-2 { grid-template-columns: 1fr; gap: 12px; }
+      
+      /* Tabs */
+      .tabs { gap: 4px; }
+      .tab-btn { padding: 7px 14px; font-size: 12px; }
+
+      /* Buttons */
+      .btn { font-size: 12px; padding: 7px 12px; }
+      .btn-sm { padding: 5px 8px; font-size: 11px; }
+
+      /* Volta panel full width on mobile */
+      #volta-panel { 
+        width: calc(100vw - 24px) !important;
+        right: 0 !important;
+        bottom: 68px !important;
+      }
+      #volta-container { right: 12px !important; }
+
+      /* Form rows */
+      .form-row input, .form-row select, .form-row textarea {
+        font-size: 16px; /* prevent iOS zoom */
+        padding: 10px 12px;
+      }
+
+      /* Save/PDF buttons at bottom */
+      .action-bar { 
+        position: sticky; bottom: 0;
+        background: white; padding: 10px;
+        box-shadow: 0 -2px 12px rgba(0,0,0,0.1);
+        z-index: 100;
+        display: flex; gap: 8px;
+      }
+      .action-bar .btn { flex: 1; }
+
+      /* Hide button labels on tiny screens */
+      .btn-label { display: none; }
+      /* Toast above FAB */
+      .toast { bottom: 80px !important; right: 12px !important; left: 12px !important; text-align: center; }
+
+      /* Modals */
+      .modal-box { border-radius: 12px 12px 0 0; position: fixed; bottom: 0; left: 0; right: 0; max-height: 90vh; width: 100% !important; }
+      .modal-overlay { align-items: flex-end; }
+      .setup-row { grid-template-columns: 1fr !important; }
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: white; border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--navy); color: white;
+      padding: 12px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-header h3 { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    .card-body { padding: 16px 18px; }
+
+    /* ── FORM ── */
+    .form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .form-row label { font-size: 11px; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-row input, .form-row select, .form-row textarea {
+      border: 1.5px solid var(--border); border-radius: 6px;
+      padding: 8px 11px; font-family: inherit; font-size: 13px; color: var(--text);
+      background: white; transition: border 0.15s; outline: none;
+      width: 100%;
+    }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+      border-color: var(--navy); box-shadow: 0 0 0 3px rgba(26,58,92,0.08);
+    }
+    .form-row textarea { resize: vertical; min-height: 60px; }
+
+    /* ── ITEMS TABLE ── */
+    .items-section { margin-top: 0; }
+    .items-header {
+      display: grid;
+      grid-template-columns: 2.5fr 1fr 80px 90px 70px 80px 38px;
+      gap: 6px; padding: 8px 10px;
+      background: var(--navy); color: white;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+      border-radius: 6px 6px 0 0;
+    }
+    .item-row {
+      display: grid;
+      grid-template-columns: 2.5fr 1fr 80px 90px 70px 80px 38px;
+      gap: 6px; padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-row input, .item-row select {
+      border: 1.5px solid var(--border); border-radius: 5px;
+      padding: 6px 8px; font-family: inherit; font-size: 12px;
+      width: 100%; outline: none; transition: border 0.15s;
+    }
+    .item-row input:focus, .item-row select:focus {
+      border-color: var(--navy); box-shadow: 0 0 0 2px rgba(26,58,92,0.08);
+    }
+    .item-amount {
+      font-size: 12px; font-weight: 600; color: var(--navy);
+      font-family: 'IBM Plex Mono', monospace; text-align: right;
+      padding-right: 4px;
+    }
+    .items-table-wrap { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .items-footer { padding: 10px 12px; background: #f8fafc; border-top: 1px solid var(--border); }
+    @media(max-width:800px) {
+      .items-header { display: none; }
+      .item-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+    }
+
+    /* ── SUMMARY ── */
+    .summary-box {
+      background: var(--navy); color: white;
+      border-radius: 8px; padding: 16px 18px;
+    }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+    .summary-row span:first-child { font-size: 13px; color: rgba(255,255,255,0.75); }
+    .summary-row span:last-child { font-size: 13px; font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+    .summary-divider { border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 8px 0; }
+    .summary-total { font-size: 18px !important; font-weight: 700 !important; color: var(--gold-light) !important; }
+
+    /* ── ACTIONS ── */
+    .actions-bar {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      padding: 16px 0 0;
+    }
+    .actions-bar .btn { flex: 1; min-width: 120px; padding: 11px 18px; font-size: 14px; }
+
+    /* ── HSN TABLE ── */
+    .hsn-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .hsn-table th { background: var(--navy); color: white; padding: 7px 10px; text-align: left; font-weight: 600; font-size: 11px; }
+    .hsn-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .hsn-table tr:last-child td { border-bottom: none; }
+
+    /* ── SAVED ── */
+    .saved-list { display: flex; flex-direction: column; gap: 8px; }
+    .saved-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border: 1px solid var(--border); border-radius: 7px;
+      background: white; cursor: pointer; transition: all 0.15s;
+    }
+    .saved-item:hover { border-color: var(--navy); box-shadow: var(--shadow); }
+    .saved-item-info h4 { font-size: 13px; font-weight: 600; }
+    .saved-item-info span { font-size: 11px; color: var(--text-light); }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .badge-invoice { background: #dbeafe; color: #1d4ed8; }
+    .badge-quotation { background: #fef3c7; color: #92400e; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--navy); color: white;
+      padding: 12px 20px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.3s; z-index: 99999;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: var(--green); }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      position:fixed; inset:0; background:rgba(10,20,40,0.7);
+      z-index:9990; display:flex; align-items:center; justify-content:center;
+      backdrop-filter:blur(3px); padding:16px;
+    }
+    .modal-box {
+      background:#fff; border-radius:16px; width:min(540px,95vw);
+      max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      background:linear-gradient(135deg,#1a3a5c,#234d78);
+      padding:18px 22px; border-radius:16px 16px 0 0;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .modal-header h3 { color:#c9a84c; margin:0; font-size:16px; }
+    .modal-close {
+      background:rgba(255,255,255,0.15); border:none; color:#fff;
+      border-radius:8px; padding:4px 10px; cursor:pointer; font-size:16px;
+    }
+    .modal-body { padding:22px; }
+    .modal-body h4 { color:#1a3a5c; font-size:13px; font-weight:700;
+      text-transform:uppercase; letter-spacing:0.5px; margin:16px 0 8px; }
+    .cmd-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:8px; }
+    .cmd-table td { padding:6px 10px; border-bottom:1px solid #f0f4f8; }
+    .cmd-table td:first-child { font-family:'IBM Plex Mono',monospace; font-size:12px;
+      color:#1a3a5c; background:#f8fafc; border-radius:4px; white-space:nowrap; width:45%; }
+    .cmd-table td:last-child { color:#4a5a70; }
+    .about-logo { text-align:center; font-size:48px; margin-bottom:8px; }
+    .about-company { text-align:center; }
+    .about-company h2 { color:#1a3a5c; font-size:18px; margin:0 0 4px; }
+    .about-company p { color:#4a5a70; font-size:13px; margin:3px 0; }
+    .about-version { background:#f8fafc; border-radius:10px; padding:12px 16px;
+      margin-top:16px; font-size:12px; color:#4a5a70; }
+    .legal-section { font-size:13px; color:#4a5a70; line-height:1.7; }
+    .legal-section h4 { color:#1a3a5c; margin:16px 0 6px; font-size:14px; }
+    .legal-tabs { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+    .legal-tab { padding:6px 14px; border-radius:20px; border:1.5px solid #d0d7e2;
+      background:#f8fafc; color:#4a5a70; font-size:12px; cursor:pointer; font-weight:600; }
+    .legal-tab.active { background:#1a3a5c; color:#c9a84c; border-color:#1a3a5c; }
+    .dup-options { display:flex; gap:10px; margin-top:20px; }
+    .dup-options button { flex:1; padding:12px; border-radius:10px; border:none;
+      font-size:14px; font-weight:700; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; }
+    .dup-keep { background:#f0f4f8; color:#1a3a5c; border:2px solid #d0d7e2; }
+    .dup-remove { background:#1a3a5c; color:#c9a84c; }
+
+    /* ── TABS ── */
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+    .tab-btn {
+      padding: 10px 20px; font-family: inherit; font-size: 13px; font-weight: 600;
+      border: none; background: none; cursor: pointer; color: var(--text-light);
+      border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+    }
+    .tab-btn.active { color: var(--navy); border-bottom-color: var(--navy); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── PRINT ── */
+    #printArea { display: none; }
+    @media print {
+      .topbar, .tabs, .actions-bar, #panelSaved { display: none !important; }
+      body { background: white !important; }
+      .card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+      .container { padding: 4px !important; max-width: 100% !important; }
+      .card-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .summary-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .items-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .btn { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">⚡</div>
+    <h1>VoltaBill</h1>
+  </div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeInvoice" onclick="setMode('invoice')">📄 Invoice</button>
+    <button class="mode-btn" id="modeQuotation" onclick="setMode('quotation')">📋 Quotation</button>
+  </div>
+  <div class="topbar-actions">
+    <!-- Desktop buttons -->
+    <div class="desktop-actions">
+      <button class="btn btn-ghost btn-sm" onclick="showTab('saved')">📁 Saved (<span id="savedCount">0</span>)</button>
+      <button class="btn btn-ghost btn-sm" onclick="WIZARD.show();WIZARD.goTo(2)">⚙️ Settings</button>
+      <button class="btn btn-ghost btn-sm" onclick="showHelp()">❓ Help</button>
+      <button class="btn btn-ghost btn-sm" onclick="showAbout()">ℹ️ About</button>
+      <button class="btn btn-ghost btn-sm" onclick="newDocument()">+ New</button>
+    </div>
+    <!-- Mobile hamburger -->
+    <button class="hamburger-btn" onclick="toggleHamburger()" id="hamburger-btn">☰</button>
+  </div>
+
+  <!-- Hamburger Dropdown -->
+  <div id="hamburger-menu">
+    <button onclick="showTab('saved');toggleHamburger()">📁 Saved (<span id="savedCountMobile">0</span>)</button>
+    <button onclick="newDocument();toggleHamburger()">➕ New</button>
+    <button onclick="showHelp();toggleHamburger()">❓ Help & Commands</button>
+    <button onclick="showAbout();toggleHamburger()">ℹ️ About VoltaBill</button>
+    <button onclick="WIZARD.show();WIZARD.goTo(2);toggleHamburger()">⚙️ Setup / Settings</button>
+  </div>
+</div>
+
+<!-- PRINT AREA (hidden, only shows during print) -->
+<div id="printArea"></div>
+
+<!-- MAIN -->
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('form')" id="tabForm">✏️ Create</button>
+    <button class="tab-btn" onclick="showTab('saved')" id="tabSaved">📁 Saved (<span id="savedCount">0</span>)</button>
+  </div>
+
+  <!-- CREATE TAB -->
+  <div class="tab-panel active" id="panelForm">
+
+    <!-- ROW 1: Company + Buyer -->
+    <div class="grid-2" style="margin-bottom:16px">
+
+      <!-- COMPANY / SELLER -->
+      <div class="card">
+        <div class="card-header">
+          <h3>🏢 Your Company (Seller)</h3>
+          <button type="button" onclick="DB.Config.saveSellerDefaults()"
+            style="background:var(--gold);color:var(--navy);border:none;border-radius:6px;
+                   padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">
+            💾 Save as Default
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="form-row"><label>Company Name</label><input type="text" id="sellerName" placeholder="Enter Seller / Company Name" /></div>
+          <div class="form-row"><label>Address</label><textarea id="sellerAddress" placeholder="5010, Digdoh MIDC, Hingna Road, Nagpur 440009"></textarea></div>
+          <div class="grid-2">
+            <div class="form-row"><label>GSTIN</label><input type="text" id="sellerGSTIN" placeholder="27AQXPG5304N1Z9" style="font-family:'IBM Plex Mono',monospace;font-size:12px" /></div>
+            <div class="form-row"><label>State Code</label><input type="text" id="sellerState" value="Maharashtra, Code: 27" /></div>
+          </div>
+          <div class="grid-2">
+            <div class="form-row"><label>Email</label><input type="email" id="sellerEmail" placeholder="info@company.com" /></div>
+            <div class="form-row"><label>Phone</label><input type="text" id="sellerPhone" placeholder="+91 9999999999" /></div>
+          </div>
+          <div class="form-row"><label>Bank Name</label><input type="text" id="bankName" placeholder="Bank of Maharashtra" /></div>
+          <div class="grid-2">
+            <div class="form-row"><label>Account No.</label><input type="text" id="bankAccNo" placeholder="60332133775" style="font-family:'IBM Plex Mono',monospace" /></div>
+            <div class="form-row"><label>IFSC Code</label><input type="text" id="bankIFSC" placeholder="MAHB0000312" style="font-family:'IBM Plex Mono',monospace" /></div>
+          </div>
+          <div class="form-row"><label>Branch</label><input type="text" id="bankBranch" placeholder="Hingna Road Branch" /></div>
+        </div>
+      </div>
+
+      <!-- BUYER -->
+      <div class="card">
+        <div class="card-header">
+          <h3 id="docTypeLabel">📄 Invoice Details</h3>
+        </div>
+        <div class="card-body">
+          <div class="grid-2">
+            <div class="form-row"><label id="docNoLabel">Invoice No.</label><input type="text" id="docNumber" placeholder="Feb 264/2026-27" /></div>
+            <div class="form-row"><label>Date</label><input type="date" id="docDate" /></div>
+          </div>
+          <div class="form-row" id="validTillRow" style="display:none">
+            <label>Valid Till (Days)</label>
+            <select id="validTill">
+              <option value="15">15 Days</option>
+              <option value="30" selected>30 Days</option>
+              <option value="45">45 Days</option>
+              <option value="60">60 Days</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Delivery Note</label><input type="text" id="deliveryNote" placeholder="1040" /></div>
+          <div class="form-row">
+            <label>Buyer Name
+              <button type="button" onclick="DB.Modal.open('buyer')"
+                style="float:right;background:none;border:1px solid var(--gold);color:var(--gold);
+                       border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;font-weight:600">
+                👥 Directory
+              </button>
+            </label>
+            <input type="text" id="buyerName" placeholder="Type name to search..." autocomplete="off" />
+            <button type="button" onclick="DB.Buyers.saveFromForm()"
+              style="margin-top:5px;background:#f0f4f8;border:1px dashed var(--border);
+                     border-radius:6px;padding:5px 12px;font-size:11.5px;cursor:pointer;
+                     color:var(--text-light);font-weight:600;width:100%">
+              💾 Save this buyer to directory
+            </button>
+          </div>
+          <div class="form-row"><label>Buyer Address</label><textarea id="buyerAddress" placeholder="Welahari, Nagpur"></textarea></div>
+          <div class="form-row">
+            <label>📱 Buyer Phone (WhatsApp)</label>
+            <input type="tel" id="buyerPhone" placeholder="91XXXXXXXXXX (with country code)" style="font-family:'IBM Plex Mono',monospace;font-size:12px" />
+          </div>
+          <div class="grid-2">
+            <div class="form-row"><label>Buyer GSTIN</label><input type="text" id="buyerGSTIN" placeholder="(if applicable)" style="font-family:'IBM Plex Mono',monospace;font-size:12px" /></div>
+            <div class="form-row"><label>Buyer State</label><input type="text" id="buyerState" value="" /></div>
+          </div>
+          <div class="form-row"><label>Mode of Payment</label>
+            <select id="paymentMode">
+              <option>Bank Transfer</option>
+              <option>UPI</option>
+              <option>Cash</option>
+              <option>Cheque</option>
+              <option>Credit (30 days)</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Supply Type</label>
+            <select id="supplyType" onchange="updateGSTType()">
+              <option value="intra">Intra-State (CGST + SGST)</option>
+              <option value="inter">Inter-State (IGST)</option>
+            </select>
+          </div>
+
+          <!-- ADDITIONAL DETAILS TOGGLE -->
+          <div style="margin-top:8px">
+            <button type="button" onclick="toggleExtra()" id="extraToggleBtn"
+              style="background:#f0f4f8;border:1.5px dashed var(--border);border-radius:6px;
+                     padding:7px 14px;font-size:12px;font-weight:600;color:var(--text-light);
+                     cursor:pointer;width:100%;text-align:left;">
+              ➕ Additional Details (Reference, Dispatch, Buyer Order)
+            </button>
+            <div id="extraFields" style="display:none;margin-top:10px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
+              <div class="grid-2">
+                <div class="form-row"><label>Reference No.</label><input type="text" id="refNo" placeholder="REF/2026/001" /></div>
+                <div class="form-row"><label>Reference Date</label><input type="date" id="refDate" /></div>
+              </div>
+              <div class="form-row"><label>Other References</label><input type="text" id="otherRef" placeholder="PO No., Contract No. etc." /></div>
+              <div class="grid-2">
+                <div class="form-row"><label>Buyer's Order No.</label><input type="text" id="buyerOrderNo" placeholder="BO/2026/123" /></div>
+                <div class="form-row"><label>Buyer's Order Date</label><input type="date" id="buyerOrderDate" /></div>
+              </div>
+              <div class="grid-2">
+                <div class="form-row"><label>Dispatch Doc No.</label><input type="text" id="dispatchDocNo" placeholder="DD/001" /></div>
+                <div class="form-row"><label>Delivery Note Date</label><input type="date" id="deliveryNoteDate" /></div>
+              </div>
+              <div class="grid-2">
+                <div class="form-row"><label>Dispatched Through</label><input type="text" id="dispatchedThrough" placeholder="Transport Co. / By Hand" /></div>
+                <div class="form-row"><label>Vehicle No.</label><input type="text" id="vehicleNo" placeholder="MH31 AB 1234" /></div>
+              </div>
+              <div class="form-row"><label>Destination</label><input type="text" id="destination" placeholder="Nagpur, Maharashtra" /></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ITEMS -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <h3>📦 Items / Services</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-gold btn-sm" onclick="DB.Modal.open('item')" style="background:var(--navy-light);color:white">📦 Item Master</button>
+          <button class="btn btn-gold btn-sm" onclick="addItem()">+ Add Item</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="items-table-wrap">
+          <div class="items-header">
+            <span>Description</span>
+            <span>HSN/SAC</span>
+            <span>Qty</span>
+            <span>Rate (₹)</span>
+            <span>GST %</span>
+            <span>Amount</span>
+            <span></span>
+          </div>
+          <div id="itemsContainer"></div>
+          <div class="items-footer">
+            <button class="btn btn-ghost btn-sm btn-navy" onclick="addItem()" style="background:#f0f4f8;color:var(--navy);border:1.5px dashed var(--border)">+ Add Another Item</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY + HSN TABLE -->
+    <div class="grid-2" style="margin-bottom:16px">
+      <!-- HSN Summary -->
+      <div class="card">
+        <div class="card-header"><h3>📊 GST / HSN Summary</h3></div>
+        <div class="card-body" style="padding:12px">
+          <table class="hsn-table" id="hsnTable">
+            <thead>
+              <tr>
+                <th>HSN/SAC</th>
+                <th>Taxable Value</th>
+                <th id="tax1Head">CGST</th>
+                <th id="tax2Head">SGST</th>
+                <th>Total Tax</th>
+              </tr>
+            </thead>
+            <tbody id="hsnBody"></tbody>
+          </table>
+          <div style="margin-top:12px">
+            <div class="form-row"><label>Declaration</label>
+              <textarea id="declaration" rows="3">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="card">
+        <div class="card-header"><h3>💰 Total Summary</h3></div>
+        <div class="card-body">
+          <div class="summary-box">
+            <div class="summary-row"><span>Subtotal (Taxable)</span><span id="sumSubtotal">₹0.00</span></div>
+            <div class="summary-row" id="cgstRow"><span>CGST</span><span id="sumCGST">₹0.00</span></div>
+            <div class="summary-row" id="sgstRow"><span>SGST</span><span id="sumSGST">₹0.00</span></div>
+            <div class="summary-row" id="igstRow" style="display:none"><span>IGST</span><span id="sumIGST">₹0.00</span></div>
+            <hr class="summary-divider" />
+            <div class="summary-row"><span>Round Off</span><span id="sumRound">₹0.00</span></div>
+            <hr class="summary-divider" />
+            <div class="summary-row">
+              <span style="font-size:15px;font-weight:700;color:var(--gold-light)">GRAND TOTAL</span>
+              <span class="summary-total" id="sumTotal">₹0.00</span>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding:10px;background:#f0f4f8;border-radius:6px;font-size:11.5px;color:var(--text-light);font-style:italic" id="amountWords">
+            Amount in words will appear here
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="card">
+      <div class="card-body">
+        <div class="actions-bar">
+          <button class="btn btn-success" onclick="generatePDF()">⬇️ Download PDF</button>
+          <button class="btn btn-gold" onclick="saveDocument()" style="background:var(--navy-light);color:white">💾 Save</button>
+          <button class="btn" onclick="shareWhatsApp()" style="background:#25D366;color:white;font-weight:600">📲 WhatsApp</button>
+          <button class="btn btn-ghost btn-navy" onclick="newDocument()" style="background:#f0f4f8;color:var(--text)">🔄 New</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panelForm -->
+
+  <!-- SAVED TAB -->
+  <div class="tab-panel" id="panelSaved">
+    <div class="card">
+      <div class="card-header">
+        <h3>📁 Saved Documents</h3>
+        <button class="btn btn-ghost btn-sm" onclick="showTab('form')">+ Create New</button>
+      </div>
+      <div class="card-body">
+        <div class="saved-list" id="savedList">
+          <p style="color:var(--text-light);font-size:13px;text-align:center;padding:24px 0">No saved documents yet. Create one!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════
+     DUPLICATE WARNING MODAL
+═══════════════════════════════════════ -->
+<div id="dup-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">
+      <h3>⚠️ Duplicate Items Detected</h3>
+      <button class="modal-close" onclick="closeDupModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:#4a5a70;font-size:14px;line-height:1.6" id="dup-msg"></p>
+      <div id="dup-list" style="background:#fff8e6;border:1px solid #f0d080;border-radius:10px;padding:12px;margin:12px 0;font-size:13px;color:#7a5a10"></div>
+      <p style="color:#4a5a70;font-size:13px">Do you want to remove duplicates?</p>
+      <div class="dup-options">
+        <button class="dup-keep" onclick="dupChoice(false)">❌ Keep All</button>
+        <button class="dup-remove" onclick="dupChoice(true)">✅ Remove Duplicates</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     HELP MODAL
+═══════════════════════════════════════ -->
+<div id="help-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>⚡ Volta Command Guide</h3>
+      <button class="modal-close" onclick="document.getElementById('help-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:#4a5a70;font-size:13px;margin:0 0 16px">Type these commands in the Volta AI chat box (⚡ button, bottom right)</p>
+
+      <h4>📄 Invoice / Quotation</h4>
+      <table class="cmd-table">
+        <tr><td>ci [buyer] itm=[item] qt=[n] rt=[price]</td><td>Create Invoice</td></tr>
+        <tr><td>cq [buyer] itm=[item] qt=[n] rt=[price]</td><td>Create Quotation</td></tr>
+        <tr><td>inv no=INV-001</td><td>Set invoice number</td></tr>
+        <tr><td>buyer=[name] addr=[address]</td><td>Set buyer details</td></tr>
+        <tr><td>gstin=[15 digit]</td><td>Set buyer GSTIN</td></tr>
+      </table>
+
+      <h4>➕ Items</h4>
+      <table class="cmd-table">
+        <tr><td>add itm=[name] qt=[n] rt=[price]</td><td>Add single item</td></tr>
+        <tr><td>add 3 items: LED 100@500, fans 50@2000</td><td>Add multiple items</td></tr>
+        <tr><td>replace itm=[name] qt=[n] rt=[price]</td><td>Replace ALL items</td></tr>
+        <tr><td>remove duplicate items</td><td>Auto-remove duplicates</td></tr>
+        <tr><td>clear items</td><td>Clear all items</td></tr>
+      </table>
+
+      <h4>🏢 Seller</h4>
+      <table class="cmd-table">
+        <tr><td>fill seller [company name]</td><td>Fill seller details from DB</td></tr>
+      </table>
+
+      <h4>⚡ Quick Shortcuts</h4>
+      <table class="cmd-table">
+        <tr><td>si</td><td>💾 Save invoice</td></tr>
+        <tr><td>dp</td><td>⬇️ Download PDF</td></tr>
+        <tr><td>ni</td><td>📄 New invoice</td></tr>
+        <tr><td>help or ?</td><td>Show command list in Volta</td></tr>
+      </table>
+
+      <h4>❓ GST / HSN Lookup</h4>
+      <table class="cmd-table">
+        <tr><td>hsn for LED</td><td>Get HSN code for LED</td></tr>
+        <tr><td>gst rate for fans</td><td>Get GST rate for fans</td></tr>
+      </table>
+
+      <div style="background:#f0f9ff;border-radius:10px;padding:12px;margin-top:16px;font-size:12px;color:#1a3a5c">
+        💡 <strong>Tip:</strong> Volta needs internet for AI commands. Shortcuts (si, dp, ni) work offline too!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     ABOUT MODAL
+═══════════════════════════════════════ -->
+<div id="about-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>ℹ️ About VoltaBill</h3>
+      <button class="modal-close" onclick="document.getElementById('about-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="about-logo">📄</div>
+      <div class="about-company">
+        <h2>VoltaBill</h2>
+        <p>Professional GST Invoice & Quotation Generator</p>
+        <p style="margin-top:12px;font-size:12px;color:#8facc8">Version 1.0.0 — March 2026</p>
+      </div>
+      <div class="about-version">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <strong style="color:#1a3a5c">Created by</strong>
+          <span>May Software Solutions</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <strong style="color:#1a3a5c">Location</strong>
+          <span>Nagpur, Maharashtra</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <strong style="color:#1a3a5c">AI Assistant</strong>
+          <span>Volta AI by May Software Solutions</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <strong style="color:#1a3a5c">Contact</strong>
+          <span>maysoftwaresolutions@gmail.com</span>
+        </div>
+      </div>
+
+      <div class="legal-tabs" style="margin-top:20px">
+        <div class="legal-tab active" onclick="showLegal('terms',this)">Terms & Conditions</div>
+        <div class="legal-tab" onclick="showLegal('privacy',this)">Privacy Policy</div>
+        <div class="legal-tab" onclick="showLegal('disclaimer',this)">Disclaimer</div>
+      </div>
+
+      <div id="legal-content" class="legal-section">
+        <div id="legal-terms">
+          <h4>1. Acceptance of Terms</h4>
+          <p>By using VoltaBill, you agree to these terms. This software is provided by May Software Solutions, Nagpur, Maharashtra.</p>
+          <h4>2. License</h4>
+          <p>This software is licensed for use by the registered business only. Redistribution or resale is not permitted without written permission.</p>
+          <h4>3. User Responsibilities</h4>
+          <p>You are responsible for the accuracy of all data entered, including GSTIN, invoice numbers, amounts, and buyer/seller details. Ensure compliance with applicable GST laws.</p>
+          <h4>4. GST Compliance</h4>
+          <p>While this software assists in generating GST-compliant invoices, May Software Solutions does not guarantee 100% GST compliance. Always verify with your CA or GST consultant.</p>
+          <h4>5. Data Storage</h4>
+          <p>All data is stored locally on your device. We do not store, transmit, or access your business or financial data.</p>
+          <h4>6. Modifications</h4>
+          <p>We reserve the right to modify these terms at any time. Continued use constitutes acceptance of updated terms.</p>
+        </div>
+        <div id="legal-privacy" style="display:none">
+          <h4>Data We Collect</h4>
+          <p>VoltaBill stores all data <strong>locally on your device only</strong> using browser localStorage. We do not collect, store, or transmit any personal or business data to our servers.</p>
+          <h4>AI Assistant (Volta)</h4>
+          <p>When you use Volta AI commands, your message text is processed by our AI service. No financial data is permanently stored by the AI provider.</p>
+          <h4>No Tracking</h4>
+          <p>We do not use analytics, cookies, or any tracking technologies in this application.</p>
+          <h4>Data Deletion</h4>
+          <p>You can delete all your data at any time by clearing your browser's site data (Settings → Privacy → Clear site data).</p>
+          <h4>Contact</h4>
+          <p>For privacy concerns: maysoftwaresolutions@gmail.com</p>
+        </div>
+        <div id="legal-disclaimer" style="display:none">
+          <h4>General Disclaimer</h4>
+          <p>VoltaBill is a tool to assist in generating invoices and quotations. It is <strong>not a substitute for professional accounting or legal advice.</strong></p>
+          <h4>GST & Tax Disclaimer</h4>
+          <p>The GST calculations performed by this software are based on the rates and rules entered by the user. May Software Solutions is not liable for any tax errors, penalties, or compliance issues arising from the use of this software.</p>
+          <h4>Financial Disclaimer</h4>
+          <p>Always verify invoice amounts, GSTIN numbers, and tax calculations before sharing with clients or filing returns. Consult a qualified Chartered Accountant for tax advice.</p>
+          <h4>AI Disclaimer</h4>
+          <p>Volta AI suggestions are generated by an AI model and may not always be accurate. Always review AI-filled fields before saving or sharing invoices.</p>
+          <h4>Limitation of Liability</h4>
+          <p>May Software Solutions shall not be liable for any direct, indirect, or consequential damages arising from the use of this software.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let mode = 'invoice';
+let itemCount = 0;
+let currentId = null;
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.onload = () => {
+  document.getElementById('docDate').valueAsDate = new Date();
+  renderSaved();
+  loadCompanyFromStorage();
+
+  // Auto-save company info on blur
+  ['sellerName','sellerAddress','sellerGSTIN','sellerState','sellerEmail','sellerPhone',
+   'bankName','bankAccNo','bankIFSC','bankBranch'].forEach(id => {
+    document.getElementById(id).addEventListener('blur', saveCompanyToStorage);
+  });
+
+  // Load saved company data or start blank
+  const saved = localStorage.getItem('gst_company');
+  if(saved) {
+    const c = JSON.parse(saved);
+    const set = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
+    set('sellerName', c.sellerName); set('sellerAddress', c.sellerAddress);
+    set('sellerGSTIN', c.sellerGSTIN); set('sellerState', c.sellerState);
+    set('sellerEmail', c.sellerEmail); set('sellerPhone', c.sellerPhone);
+  }
+  addItem(); addItem(); addItem(); updateSummary();
+};
+
+function loadDummyData() {
+  // Seller / Company
+  
+  set('sellerAddress', '5010, Digdoh MIDC\nHingna Road\nNagpur - 440009');
+  set('sellerGSTIN', '27AQXPG5304N1Z9');
+  set('sellerState', 'Maharashtra, Code: 27');
+  
+  set('sellerPhone', '+91 9579110556');
+  set('bankName', 'Bank of Maharashtra');
+  set('bankAccNo', '60332133775');
+  set('bankIFSC', 'MAHB0000312');
+  set('bankBranch', 'Hingna Road Branch');
+
+  // Invoice details
+  set('docNumber', peekNextInvoiceNumber());
+  set('deliveryNote', '1001');
+
+  // Buyer
+  set('buyerName', 'SACHIN HEMANT BAJAJ');
+  set('buyerAddress', 'Welahari, Nagpur');
+  set('buyerGSTIN', '');
+  set('buyerState', 'Maharashtra, Code: 27');
+  document.getElementById('paymentMode').value = 'Bank Transfer';
+  document.getElementById('supplyType').value = 'intra';
+  updateGSTType();
+
+  // Items
+  document.getElementById('itemsContainer').innerHTML = '';
+  itemCount = 0;
+  const dummyItems = [
+    { desc: 'LED Flood Light 300W', hsn: '94054090', qty: 1, rate: 4850, gst: 18 },
+    { desc: 'LED Flood Light 150W', hsn: '94054090', qty: 2, rate: 3800, gst: 18 },
+    { desc: 'LED Street Light 100W', hsn: '94054090', qty: 3, rate: 1850, gst: 18 },
+  ];
+  dummyItems.forEach(item => {
+    addItem();
+    const id = itemCount;
+    set('desc-'+id, item.desc);
+    document.getElementById('hsn-'+id).value = item.hsn;
+    document.getElementById('qty-'+id).value = item.qty;
+    document.getElementById('rate-'+id).value = item.rate;
+    document.getElementById('gst-'+id).value = item.gst;
+  });
+  updateSummary();
+  showToast('📋 Dummy data loaded — edit as needed!');
+}
+
+function saveCompanyToStorage() {
+  const co = {
+    sellerName: v('sellerName'), sellerAddress: v('sellerAddress'),
+    sellerGSTIN: v('sellerGSTIN'), sellerState: v('sellerState'),
+    sellerEmail: v('sellerEmail'), sellerPhone: v('sellerPhone'),
+    bankName: v('bankName'), bankAccNo: v('bankAccNo'),
+    bankIFSC: v('bankIFSC'), bankBranch: v('bankBranch'),
+  };
+  localStorage.setItem('gst_company', JSON.stringify(co));
+}
+
+function loadCompanyFromStorage() {
+  try {
+    const co = JSON.parse(localStorage.getItem('gst_company') || '{}');
+    Object.keys(co).forEach(k => { if(document.getElementById(k)) set(k, co[k]); });
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════
+// MODE TOGGLE
+// ══════════════════════════════════════════════
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeInvoice').classList.toggle('active', m === 'invoice');
+  document.getElementById('modeQuotation').classList.toggle('active', m === 'quotation');
+  document.getElementById('docTypeLabel').textContent = m === 'invoice' ? '📄 Invoice Details' : '📋 Quotation Details';
+  document.getElementById('docNoLabel').textContent = m === 'invoice' ? 'Invoice No.' : 'Quotation No.';
+  document.getElementById('validTillRow').style.display = m === 'quotation' ? '' : 'none';
+  document.getElementById('deliveryNote').closest('.form-row').style.display = m === 'quotation' ? 'none' : '';
+  showToast(m === 'invoice' ? '📄 Switched to Invoice Mode' : '📋 Switched to Quotation Mode');
+}
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function showTab(t) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('active');
+  document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('active');
+  if(t === 'saved') renderSaved();
+}
+
+// ══════════════════════════════════════════════
+// ITEMS
+// ══════════════════════════════════════════════
+function addItem() {
+  itemCount++;
+  const id = itemCount;
+  const div = document.createElement('div');
+  div.className = 'item-row';
+  div.id = 'item-' + id;
+  div.innerHTML = `
+    <input type="text" placeholder="LED Flood Light 300W" oninput="autoFillHSN(${id}); updateSummary()" id="desc-${id}" />
+    <input type="text" placeholder="94054090" id="hsn-${id}" list="hsnList" oninput="updateSummary()" style="font-family:'IBM Plex Mono',monospace;font-size:11px" />
+    <input type="number" placeholder="1" value="1" min="0" id="qty-${id}" oninput="updateSummary()" />
+    <input type="number" placeholder="0.00" value="" min="0" step="0.01" id="rate-${id}" oninput="updateSummary()" />
+    <select id="gst-${id}" onchange="updateSummary()">
+      <option value="0">0%</option>
+      <option value="5">5%</option>
+      <option value="12">12%</option>
+      <option value="18" selected>18%</option>
+      <option value="28">28%</option>
+    </select>
+    <div class="item-amount" id="amt-${id}">₹0.00</div>
+    <button class="btn btn-danger btn-sm btn-icon" onclick="removeItem(${id})" title="Remove">✕</button>
+  `;
+  document.getElementById('itemsContainer').appendChild(div);
+  updateSummary();
+  // Init item autocomplete for this row
+  if(typeof DB !== 'undefined') DB.AutoComplete.initItem(id);
+}
+
+function removeItem(id) {
+  const el = document.getElementById('item-' + id);
+  if(el) el.remove();
+  updateSummary();
+}
+
+// ══════════════════════════════════════════════
+// CALCULATIONS
+// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// AUTO FILL HSN FROM DESCRIPTION
+// ══════════════════════════════════════════════
+const HSN_MAP = [
+  { keywords: ['led','flood light','street light','tube light','panel light','downlight','batten','highbay'], hsn: '94054090', gst: 18 },
+  { keywords: ['bulb','cfl','lamp','halogen','spotlight','strip light'], hsn: '94054090', gst: 18 },
+  { keywords: ['emergency light','exit light','lantern'], hsn: '94054090', gst: 18 },
+  { keywords: ['fan','exhaust fan','ceiling fan','table fan','wall fan','blower'], hsn: '84145990', gst: 18 },
+  { keywords: ['wire','cable','wiring','conductor','flex','armoured','coaxial','lan cable'], hsn: '85444290', gst: 18 },
+  { keywords: ['switch','socket','outlet','plug','modular switch','usb socket'], hsn: '85364190', gst: 18 },
+  { keywords: ['mcb','mccb','rccb','rcbo','elcb','breaker','circuit breaker','miniature'], hsn: '85362090', gst: 18 },
+  { keywords: ['db','distribution board','mcb box','panel board','consumer unit','fuse box'], hsn: '85371090', gst: 18 },
+  { keywords: ['switchgear','contactor','relay','isolator','changeover','ats'], hsn: '85389090', gst: 18 },
+  { keywords: ['transformer','inverter','ups','stabilizer','voltage regulator'], hsn: '85044090', gst: 18 },
+  { keywords: ['battery','lithium','smf','vrla','gel battery'], hsn: '85072000', gst: 18 },
+  { keywords: ['generator','dg set','genset','diesel generator','alternator'], hsn: '85021390', gst: 18 },
+  { keywords: ['motor','ac motor','dc motor','servo motor','pump motor','submersible'], hsn: '85016200', gst: 18 },
+  { keywords: ['conduit','pvc pipe','trunking','duct','cable tray','raceway'], hsn: '39172390', gst: 18 },
+  { keywords: ['gi pipe','ms pipe','steel pipe','iron pipe'], hsn: '73063090', gst: 18 },
+  { keywords: ['alarm','smoke detector','motion sensor','pir','fire alarm','bell','buzzer'], hsn: '85311090', gst: 18 },
+  { keywords: ['cctv','camera','dvr','nvr','security system'], hsn: '85258090', gst: 18 },
+  { keywords: ['software','it service','development','coding','app','website','web design'], hsn: '998313', gst: 18 },
+  { keywords: ['it support','maintenance','amc','technical support'], hsn: '998314', gst: 18 },
+  { keywords: ['installation','electrical work','wiring work','fitting','labour','service charge'], hsn: '995411', gst: 18 },
+  { keywords: ['civil work','construction','plumbing','painting'], hsn: '997212', gst: 18 },
+];
+
+function autoFillHSN(id) {
+  const desc = (v('desc-' + id) || '').toLowerCase();
+  if (!desc || desc.length < 3) return;
+  const hsnField = document.getElementById('hsn-' + id);
+  const gstField = document.getElementById('gst-' + id);
+  if (!hsnField || !gstField) return;
+  const isAutoFilled = hsnField.dataset.auto === '1';
+  if (hsnField.value && !isAutoFilled) return;
+  for (const entry of HSN_MAP) {
+    const matched = entry.keywords.some(kw => desc.includes(kw));
+    if (matched) {
+      hsnField.value = entry.hsn;
+      hsnField.dataset.auto = '1';
+      gstField.value = entry.gst;
+      hsnField.style.borderColor = 'var(--green)';
+      setTimeout(() => hsnField.style.borderColor = '', 1500);
+      return;
+    }
+  }
+  if (isAutoFilled) { hsnField.value = ''; hsnField.dataset.auto = '0'; }
+}
+
+function toggleExtra() {
+  const el = document.getElementById('extraFields');
+  const btn = document.getElementById('extraToggleBtn');
+  const open = el.style.display === 'none';
+  el.style.display = open ? '' : 'none';
+  btn.textContent = open ? '➖ Additional Details (Reference, Dispatch, Buyer Order)' : '➕ Additional Details (Reference, Dispatch, Buyer Order)';
+}
+
+function updateGSTType() {
+  const inter = document.getElementById('supplyType').value === 'inter';
+  document.getElementById('cgstRow').style.display = inter ? 'none' : '';
+  document.getElementById('sgstRow').style.display = inter ? 'none' : '';
+  document.getElementById('igstRow').style.display = inter ? '' : 'none';
+  document.getElementById('tax1Head').textContent = inter ? 'IGST' : 'CGST';
+  document.getElementById('tax2Head').style.display = inter ? 'none' : '';
+  document.getElementById('tax2Head').textContent = 'SGST';
+  updateSummary();
+}
+
+function getItems() {
+  const rows = document.querySelectorAll('.item-row');
+  const items = [];
+  rows.forEach(row => {
+    const id = row.id.replace('item-', '');
+    const desc = v('desc-' + id);
+    const rate = parseFloat(v('rate-' + id)) || 0;
+    const qty = parseFloat(v('qty-' + id)) || 0;
+    const gst = parseFloat(document.getElementById('gst-' + id)?.value) || 0;
+    const hsn = v('hsn-' + id);
+    if(rate > 0 || desc) {
+      const taxable = qty * rate;
+      items.push({ id, desc, hsn, qty, rate, gst, taxable });
+    }
+  });
+  return items;
+}
+
+function updateSummary() {
+  const items = getItems();
+  const inter = document.getElementById('supplyType').value === 'inter';
+  let subtotal = 0, totalTax = 0;
+  const hsnMap = {};
+
+  items.forEach(item => {
+    subtotal += item.taxable;
+    const tax = item.taxable * item.gst / 100;
+    totalTax += tax;
+    const key = item.hsn || 'N/A';
+    if(!hsnMap[key]) hsnMap[key] = { taxable: 0, gst: item.gst, tax: 0 };
+    hsnMap[key].taxable += item.taxable;
+    hsnMap[key].tax += tax;
+
+    const amtEl = document.getElementById('amt-' + item.id);
+    if(amtEl) amtEl.textContent = '₹' + (item.taxable + tax).toFixed(2);
+  });
+
+  // All items with no rate
+  document.querySelectorAll('.item-row').forEach(row => {
+    const id = row.id.replace('item-', '');
+    const rate = parseFloat(v('rate-' + id)) || 0;
+    const qty = parseFloat(v('qty-' + id)) || 0;
+    if(rate === 0 || qty === 0) {
+      const amtEl = document.getElementById('amt-' + id);
+      if(amtEl) amtEl.textContent = '₹0.00';
+    }
+  });
+
+  const grandExact = subtotal + totalTax;
+  const grandRound = Math.round(grandExact);
+  const roundOff = grandRound - grandExact;
+
+  set('sumSubtotal', '₹' + subtotal.toFixed(2));
+  if(!inter) {
+    set('sumCGST', '₹' + (totalTax / 2).toFixed(2));
+    set('sumSGST', '₹' + (totalTax / 2).toFixed(2));
+  } else {
+    set('sumIGST', '₹' + totalTax.toFixed(2));
+  }
+  set('sumRound', (roundOff >= 0 ? '+' : '') + roundOff.toFixed(2));
+  set('sumTotal', '₹' + grandRound.toLocaleString('en-IN'));
+  document.getElementById('amountWords').textContent = 'INR ' + numberToWords(grandRound) + ' Only';
+
+  // HSN table
+  const tbody = document.getElementById('hsnBody');
+  tbody.innerHTML = '';
+  Object.keys(hsnMap).forEach(hsn => {
+    const h = hsnMap[hsn];
+    const tax1 = inter ? h.tax : h.tax / 2;
+    const tax2 = inter ? 0 : h.tax / 2;
+    tbody.innerHTML += `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:11px">${hsn}</td>
+      <td>₹${h.taxable.toFixed(2)}</td>
+      <td>${h.gst/2}% = ₹${tax1.toFixed(2)}</td>
+      ${inter ? '' : `<td>${h.gst/2}% = ₹${tax2.toFixed(2)}</td>`}
+      <td style="font-weight:600">₹${h.tax.toFixed(2)}</td>
+    </tr>`;
+  });
+  if(tbody.innerHTML === '') {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:#999;text-align:center;padding:16px">Add items to see GST summary</td></tr>';
+  }
+}
+
+// ══════════════════════════════════════════════
+// PDF GENERATION - MULTI PAGE SUPPORT
+// ══════════════════════════════════════════════
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const inter = document.getElementById('supplyType').value === 'inter';
+  const isQuote = mode === 'quotation';
+  const items = getItems();
+
+  const W = 210, m = 14;
+  const PAGE_H = 297;
+  const FOOTER_H = 12; // footer bar height
+  const SAFE_BOTTOM = PAGE_H - FOOTER_H - 8; // safe printable bottom
+
+  let y = 0;
+  let pageNum = 1;
+
+  // ── HELPERS ──
+  function navy()  { doc.setFillColor(26, 58, 92); }
+  function gold()  { doc.setFillColor(201, 168, 76); }
+  function lightbg(){ doc.setFillColor(240, 244, 248); }
+  function altbg() { doc.setFillColor(248, 250, 252); }
+  function tNavy() { doc.setTextColor(26, 58, 92); }
+  function tWhite(){ doc.setTextColor(255, 255, 255); }
+  function tGold()  { doc.setTextColor(201, 168, 76); }
+  function tGoldL() { doc.setTextColor(232, 201, 106); }
+  function tGray()  { doc.setTextColor(74, 90, 112); }
+  function tLight() { doc.setTextColor(220, 230, 242); }
+  function tMid()   { doc.setTextColor(100, 120, 140); }
+  function bold(sz) { doc.setFont('helvetica','bold'); doc.setFontSize(sz); }
+  function norm(sz) { doc.setFont('helvetica','normal'); doc.setFontSize(sz); }
+  function italic(sz){ doc.setFont('helvetica','italic'); doc.setFontSize(sz); }
+
+  function drawFooter() {
+    const totalPages = doc.internal.getNumberOfPages();
+    navy(); doc.rect(0, PAGE_H - FOOTER_H, W, FOOTER_H, 'F');
+    tGold(); italic(7);
+    doc.text(
+      'This is a Computer Generated ' + (isQuote ? 'Quotation' : 'Invoice') +
+      ' — Subject to ' + (v('sellerState') ? v('sellerState').split(',')[0] : 'Maharashtra') + ' Jurisdiction',
+      W/2, PAGE_H - FOOTER_H + 7, { align: 'center' }
+    );
+    // Page number right side
+    tWhite(); norm(7);
+    doc.text('Page ' + pageNum, W - m, PAGE_H - FOOTER_H + 7, { align: 'right' });
+  }
+
+  function checkNewPage(needed) {
+    if (y + needed > SAFE_BOTTOM) {
+      drawFooter();
+      doc.addPage();
+      pageNum++;
+      y = 12;
+      // Slim header on continuation pages
+      navy(); doc.rect(0, 0, W, 10, 'F');
+      tGold(); bold(9);
+      doc.text((v('sellerName') || 'Company').toUpperCase(), m, 7);
+      tWhite(); norm(7);
+      doc.text((isQuote ? 'QUOTATION' : 'TAX INVOICE') + ' — ' + (v('docNumber') || ''), W - m, 7, { align: 'right' });
+      y = 16;
+    }
+  }
+
+  // ══ PAGE 1 HEADER ══
+  // Full-height header box
+  navy(); doc.rect(0, 0, W, 38, 'F');
+
+  // Company name
+  tGold(); bold(16);
+  doc.text(v('sellerName') || 'Company Name', m, 12);
+
+  // Badge
+  gold(); doc.roundedRect(W - m - 44, 3, 44, 11, 2, 2, 'F');
+  tNavy(); bold(9.5);
+  doc.text(isQuote ? 'QUOTATION' : 'TAX INVOICE', W - m - 22, 10, { align: 'center' });
+
+  // Address + details inside header
+  tLight(); norm(8);
+  const sellerLines = (v('sellerAddress') || '').split('\n').filter(l => l.trim());
+  const addrStr = sellerLines.join('  |  ');
+  doc.text(addrStr, m, 20);
+  norm(7.5);
+  doc.text('GSTIN: ' + (v('sellerGSTIN') || 'N/A'), m, 27);
+  const contactStr = (v('sellerEmail') ? 'Email: ' + v('sellerEmail') : '') +
+                     (v('sellerEmail') && v('sellerPhone') ? '    ' : '') +
+                     (v('sellerPhone') ? 'Ph: ' + v('sellerPhone') : '');
+  if(contactStr) doc.text(contactStr, m, 33);
+  doc.text('State: ' + (v('sellerState') || 'Maharashtra, Code: 27'), W - m, 33, { align: 'right' });
+
+  y = 42;
+
+  // ══ INFO GRID ══
+  const hasRef      = v('refNo') || v('otherRef') || v('buyerOrderNo');
+  const hasDispatch = v('dispatchedThrough') || v('vehicleNo') || v('destination') || v('dispatchDocNo');
+  const infoRows    = 2 + (hasRef ? 1 : 0) + (hasDispatch ? 1 : 0); // min 2: invoice row + delivery note row
+  const rowH = 12;
+  const infoH = 6 + infoRows * rowH;
+
+  lightbg(); doc.rect(m, y, W - 2*m, infoH, 'F');
+  doc.setDrawColor(208, 215, 226); doc.setLineWidth(0.3);
+  doc.rect(m, y, W - 2*m, infoH);
+
+  const cw = (W - 2*m) / 4;
+  const cx = [m + 3, m + cw + 3, m + 2*cw + 3, m + 3*cw + 3];
+  let gy = y + 7;
+
+  function infoCell(label, value, x, yy) {
+    tGray(); norm(6.5); doc.text(label, x, yy);
+    tNavy(); bold(8.5); doc.text(value || '—', x, yy + 5);
+  }
+  infoCell(isQuote ? 'QUOTATION NO.' : 'INVOICE NO.', v('docNumber'), cx[0], gy);
+  infoCell('DATE', formatDate(v('docDate')), cx[1], gy);
+  infoCell('BUYER STATE', v('buyerState'), cx[2], gy);
+  infoCell('PAYMENT MODE', v('paymentMode'), cx[3], gy);
+  gy += rowH;
+
+  if(!isQuote) infoCell('DELIVERY NOTE', v('deliveryNote'), cx[0], gy);
+  else         infoCell('VALID FOR', (v('validTill')||'30') + ' Days', cx[0], gy);
+  if(v('refNo'))       infoCell('REF NO.', v('refNo'), cx[1], gy);
+  if(v('buyerOrderNo'))infoCell("BUYER'S ORDER NO.", v('buyerOrderNo'), cx[2], gy);
+  if(v('otherRef'))    infoCell('OTHER REF.', v('otherRef'), cx[3], gy);
+  gy += rowH;
+
+  if(hasDispatch) {
+    if(v('dispatchedThrough')) infoCell('DISPATCHED THROUGH', v('dispatchedThrough'), cx[0], gy);
+    if(v('vehicleNo'))         infoCell('VEHICLE NO.', v('vehicleNo'), cx[1], gy);
+    if(v('destination'))       infoCell('DESTINATION', v('destination'), cx[2], gy);
+    if(v('dispatchDocNo'))     infoCell('DISPATCH DOC NO.', v('dispatchDocNo'), cx[3], gy);
+  }
+
+  y += infoH + 5;
+
+  // ══ BILL TO ══
+  checkNewPage(35);
+  navy(); doc.rect(m, y, W - 2*m, 7, 'F');
+  tWhite(); bold(8); doc.text('BILL TO (BUYER)', m + 3, y + 5);
+  y += 11;
+  tNavy(); bold(12); doc.text(v('buyerName') || 'Buyer Name', m, y); y += 7;
+  tGray(); norm(8.5);
+  const bLines = (v('buyerAddress') || '').split('\n').filter(l => l.trim());
+  bLines.forEach(ln => { doc.text(ln, m, y); y += 5.5; });
+  if(v('buyerGSTIN')) { doc.text('GSTIN: ' + v('buyerGSTIN'), m, y); y += 5.5; }
+  doc.text('State: ' + (v('buyerState') || ''), m, y);
+  y += 10;
+
+  // ══ ITEMS TABLE ══
+  checkNewPage(20);
+  // Header
+  navy(); doc.rect(m, y, W - 2*m, 8, 'F');
+  tWhite(); bold(8);
+  const ic = [m+3, m+72, m+98, m+118, m+144, m+158, W-m-3];
+  doc.text('DESCRIPTION OF GOODS', ic[0], y+5.5);
+  doc.text('HSN/SAC', ic[1], y+5.5);
+  doc.text('QTY', ic[2], y+5.5);
+  doc.text('RATE', ic[3], y+5.5);
+  doc.text('GST%', ic[4], y+5.5);
+  doc.text('AMOUNT', ic[6], y+5.5, { align:'right' });
+  y += 9;
+
+  let subtotal = 0, totalTax = 0;
+  items.forEach((item, i) => {
+    checkNewPage(10);
+    if(i % 2 === 0) { altbg(); doc.rect(m, y, W-2*m, 8, 'F'); }
+    doc.setDrawColor(208, 215, 226); doc.setLineWidth(0.2);
+    doc.line(m, y+8, W-m, y+8);
+
+    const tax = item.taxable * item.gst / 100;
+    const total = item.taxable + tax;
+    subtotal += item.taxable;
+    totalTax += tax;
+
+    tNavy(); norm(8.5);
+    // Truncate long description
+    const descMax = doc.splitTextToSize(item.desc || '', 65)[0];
+    doc.text(descMax, ic[0], y+5.5);
+    norm(8);
+    doc.text(item.hsn || '', ic[1], y+5.5);
+    doc.text(String(item.qty), ic[2], y+5.5);
+    doc.text('Rs.' + item.rate.toFixed(2), ic[3], y+5.5);
+    doc.text(item.gst + '%', ic[4], y+5.5);
+    bold(8.5);
+    doc.text('Rs.' + total.toFixed(2), ic[6], y+5.5, { align:'right' });
+    y += 8;
+  });
+  y += 4;
+
+  // ══ TOTALS ══
+  checkNewPage(45);
+  doc.setDrawColor(208,215,226); doc.setLineWidth(0.4);
+  doc.line(m, y, W-m, y); y += 4;
+
+  const grandExact = subtotal + totalTax;
+  const grandRound = Math.round(grandExact);
+  const roundOff   = grandRound - grandExact;
+  const rx = W - m - 3;
+  const lx = W - m - 70;
+
+  function totalRow(label, value, isBold) {
+    tGray(); norm(8.5); doc.text(label, lx, y);
+    tNavy(); if(isBold) bold(8.5); else norm(8.5);
+    doc.text(value, rx, y, { align:'right' });
+    y += 7;
+  }
+
+  totalRow('Subtotal (Taxable Value):', 'Rs.' + subtotal.toFixed(2), false);
+  if(!inter) {
+    const gstRate = items[0]?.gst/2 || 9;
+    totalRow('CGST @ ' + gstRate + '%:', 'Rs.' + (totalTax/2).toFixed(2), false);
+    totalRow('SGST @ ' + gstRate + '%:', 'Rs.' + (totalTax/2).toFixed(2), false);
+  } else {
+    totalRow('IGST @ ' + (items[0]?.gst || 18) + '%:', 'Rs.' + totalTax.toFixed(2), false);
+  }
+  if(Math.abs(roundOff) > 0.001) {
+    totalRow('Round Off:', (roundOff >= 0 ? '+' : '') + roundOff.toFixed(2), false);
+  }
+
+  // Grand Total box
+  navy(); doc.rect(lx - 5, y - 2, W - m - lx + 8, 12, 'F');
+  tGoldL(); bold(11);
+  doc.text('TOTAL:', lx, y + 7);
+  doc.text('Rs.' + grandRound.toLocaleString('en-IN'), rx, y + 7, { align:'right' });
+  y += 18;
+
+  // Amount in words
+  checkNewPage(14);
+  lightbg(); doc.rect(m, y, W-2*m, 10, 'F');
+  doc.setDrawColor(208,215,226); doc.rect(m, y, W-2*m, 10);
+  tGray(); italic(8);
+  doc.text('INR ' + numberToWords(grandRound) + ' Only', m + 4, y + 6.5);
+  y += 15;
+
+  // ══ HSN/SAC SUMMARY TABLE ══
+  const hsnData = {};
+  items.forEach(item => {
+    const key = (item.hsn || 'N/A') + '_' + item.gst;
+    if(!hsnData[key]) hsnData[key] = { hsn: item.hsn||'N/A', gst:item.gst, taxable:0, tax:0 };
+    hsnData[key].taxable += item.taxable;
+    hsnData[key].tax     += item.taxable * item.gst / 100;
+  });
+  const hsnRows = Object.values(hsnData);
+  const hsnNeeded = 8 + (hsnRows.length + 1) * 8 + 14;
+  checkNewPage(hsnNeeded);
+
+  navy(); doc.rect(m, y, W-2*m, 7, 'F');
+  tWhite(); bold(8); doc.text('HSN / SAC — WISE  GST  SUMMARY', m+3, y+5);
+  y += 8;
+
+  if(inter) {
+    // 5 columns
+    const hc = [m+3, m+38, m+95, m+130, W-m-3];
+    lightbg(); doc.rect(m, y, W-2*m, 7, 'F');
+    tGray(); bold(7.5);
+    doc.text('HSN/SAC', hc[0], y+5);
+    doc.text('TAXABLE VALUE', hc[1], y+5);
+    doc.text('IGST RATE', hc[2], y+5);
+    doc.text('IGST AMOUNT', hc[3], y+5);
+    doc.text('TOTAL TAX', hc[4], y+5, {align:'right'});
+    y += 8;
+    hsnRows.forEach((row, i) => {
+      checkNewPage(9);
+      if(i%2===0){altbg();doc.rect(m,y,W-2*m,7,'F');}
+      tNavy(); norm(8);
+      doc.text(row.hsn, hc[0], y+5);
+      doc.text('Rs.' + row.taxable.toFixed(2), hc[1], y+5);
+      doc.text(row.gst + '%', hc[2], y+5);
+      doc.text('Rs.' + row.tax.toFixed(2), hc[3], y+5);
+      bold(8); doc.text('Rs.' + row.tax.toFixed(2), hc[4], y+5, {align:'right'});
+      y += 7;
+    });
+    checkNewPage(9);
+    navy(); doc.rect(m,y,W-2*m,7,'F');
+    tWhite(); bold(8);
+    const tt = hsnRows.reduce((s,r)=>s+r.taxable,0);
+    const tx = hsnRows.reduce((s,r)=>s+r.tax,0);
+    doc.text('TOTAL', hc[0], y+5);
+    doc.text('Rs.'+tt.toFixed(2), hc[1], y+5);
+    doc.text('Rs.'+tx.toFixed(2), hc[3], y+5);
+    doc.text('Rs.'+tx.toFixed(2), hc[4], y+5, {align:'right'});
+    y += 11;
+  } else {
+    // 7 columns - properly spaced
+    const hc = [m+3, m+30, m+72, m+96, m+126, m+148, W-m-3];
+    lightbg(); doc.rect(m, y, W-2*m, 7, 'F');
+    tGray(); bold(7);
+    doc.text('HSN/SAC',      hc[0], y+5);
+    doc.text('TAXABLE VAL',  hc[1], y+5);
+    doc.text('CGST %',       hc[2], y+5);
+    doc.text('CGST AMT',     hc[3], y+5);
+    doc.text('SGST %',       hc[4], y+5);
+    doc.text('SGST AMT',     hc[5], y+5);
+    doc.text('TOTAL TAX',    hc[6], y+5, {align:'right'});
+    y += 8;
+    hsnRows.forEach((row, i) => {
+      checkNewPage(9);
+      if(i%2===0){altbg();doc.rect(m,y,W-2*m,7,'F');}
+      tNavy(); norm(7.5);
+      doc.text(row.hsn,                           hc[0], y+5);
+      doc.text('Rs.'+row.taxable.toFixed(2),      hc[1], y+5);
+      doc.text(row.gst/2+'%',                     hc[2], y+5);
+      doc.text('Rs.'+(row.tax/2).toFixed(2),      hc[3], y+5);
+      doc.text(row.gst/2+'%',                     hc[4], y+5);
+      doc.text('Rs.'+(row.tax/2).toFixed(2),      hc[5], y+5);
+      bold(7.5); doc.text('Rs.'+row.tax.toFixed(2), hc[6], y+5, {align:'right'});
+      y += 7;
+    });
+    checkNewPage(9);
+    navy(); doc.rect(m,y,W-2*m,7,'F');
+    tWhite(); bold(7.5);
+    const tt = hsnRows.reduce((s,r)=>s+r.taxable,0);
+    const tx = hsnRows.reduce((s,r)=>s+r.tax,0);
+    doc.text('TOTAL',                    hc[0], y+5);
+    doc.text('Rs.'+tt.toFixed(2),        hc[1], y+5);
+    doc.text('Rs.'+(tx/2).toFixed(2),    hc[3], y+5);
+    doc.text('Rs.'+(tx/2).toFixed(2),    hc[5], y+5);
+    doc.text('Rs.'+tx.toFixed(2),        hc[6], y+5, {align:'right'});
+    y += 11;
+  }
+
+  // ══ BANK + DECLARATION + SIGNATURE ══
+  const secH = 52;
+  checkNewPage(secH);
+  const colW3 = (W - 2*m - 6) / 3;
+  const bx = m, dx = m + colW3 + 3, sx = m + 2*colW3 + 6;
+  const secY = y;
+
+  // Headers
+  navy();
+  doc.rect(bx, secY, colW3, 7, 'F');
+  doc.rect(dx, secY, colW3, 7, 'F');
+  doc.rect(sx, secY, colW3, 7, 'F');
+  tWhite(); bold(7.5);
+  doc.text('BANK DETAILS', bx+3, secY+5);
+  doc.text('DECLARATION', dx+3, secY+5);
+  const forName = 'FOR ' + (v('sellerName')||'').toUpperCase();
+  const forLines = doc.splitTextToSize(forName, colW3-6);
+  forLines.forEach((ln,i) => doc.text(ln, sx+3, secY+5+i*4));
+
+  // Bank content
+  let by = secY + 12;
+  tNavy(); bold(8.5); doc.text(v('bankName')||'', bx, by); by += 6;
+  tGray(); norm(8);
+  if(v('bankAccNo'))  { doc.text('A/c: ' + v('bankAccNo'), bx, by); by += 5.5; }
+  if(v('bankIFSC'))   { doc.text('IFSC: ' + v('bankIFSC'), bx, by); by += 5.5; }
+  if(v('bankBranch')) { doc.text('Branch: ' + v('bankBranch'), bx, by); }
+
+  // Declaration content
+  let decY = secY + 12;
+  tGray(); norm(7.5);
+  const declText = v('declaration') || 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.';
+  const declLines = doc.splitTextToSize(declText, colW3 - 6);
+  declLines.forEach(ln => { doc.text(ln, dx+2, decY); decY += 5; });
+
+  // Signature content
+  const sigLineY = secY + 44;
+  doc.setDrawColor(130, 150, 170); doc.setLineWidth(0.5);
+  doc.line(sx+2, sigLineY, sx+colW3-2, sigLineY);
+  tMid(); norm(8);
+  doc.text('Authorised Signatory', sx+3, sigLineY+6);
+
+  y = secY + secH + 4;
+
+  // ══ FOOTER (all pages) ══
+  drawFooter();
+
+  const docNo = v('docNumber') || 'document';
+  doc.save((isQuote ? 'Quotation_' : 'Invoice_') + docNo.replace(/\//g, '-') + '.pdf');
+  showToast('✅ PDF Downloaded!', 'success');
+}
+
+// ══════════════════════════════════════════════
+// PRINT
+// ══════════════════════════════════════════════
+function printInvoice() {
+  window.print();
+}
+
+// ══════════════════════════════════════════════
+// AUTO INVOICE NUMBER
+// ══════════════════════════════════════════════
+function getCurrentFY() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0=Jan ... 3=Apr
+  const fyStart = m >= 3 ? y : y - 1;
+  return `${fyStart}-${String(fyStart + 1).slice(-2)}`;
+}
+
+function getNextInvoiceNumber() {
+  const fy = getCurrentFY();
+  const stored = JSON.parse(localStorage.getItem('vb_inv_seq') || '{}');
+  // Reset counter if new financial year
+  const count = (stored.fy === fy) ? (stored.count || 0) + 1 : 1;
+  localStorage.setItem('vb_inv_seq', JSON.stringify({ fy, count }));
+  const month = new Date().toLocaleString('en', { month: 'short' });
+  const num = String(count).padStart(3, '0');
+  return `${month} ${num}/${fy}`;
+}
+
+function peekNextInvoiceNumber() {
+  // Returns next number WITHOUT incrementing (for display only)
+  const fy = getCurrentFY();
+  const stored = JSON.parse(localStorage.getItem('vb_inv_seq') || '{}');
+  const count = (stored.fy === fy) ? (stored.count || 0) + 1 : 1;
+  const month = new Date().toLocaleString('en', { month: 'short' });
+  return `${month} ${String(count).padStart(3, '0')}/${fy}`;
+}
+
+// ══════════════════════════════════════════════
+// WHATSAPP SHARE
+// ══════════════════════════════════════════════
+function shareWhatsApp() {
+  const docNumber = document.getElementById('docNumber').value.trim() || 'N/A';
+  const buyerName = document.getElementById('buyerName').value.trim() || 'Customer';
+  const buyerPhone = document.getElementById('buyerPhone').value.trim().replace(/\D/g, '');
+  const total     = document.getElementById('sumTotal').textContent.trim() || '₹0.00';
+  const docType   = document.getElementById('modeInvoice').classList.contains('active') ? 'Invoice' : 'Quotation';
+  const msg = `Hello ${buyerName},\n\nYour ${docType} *${docNumber}* has been generated.\n\n*Total Amount: ${total}*\n\nThank you for your business!`;
+  const url = buyerPhone
+    ? `https://wa.me/${buyerPhone}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+// ══════════════════════════════════════════════
+// SAVE / LOAD
+// ══════════════════════════════════════════════
+function saveDocument() {
+  // Check duplicates first, then save
+  checkDuplicates(() => _doSave());
+}
+
+function _doSave() {
+  const id = currentId || Date.now().toString();
+  currentId = id;
+  const doc = {
+    id, mode,
+    docNumber: v('docNumber'), docDate: v('docDate'),
+    buyerName: v('buyerName'), buyerAddress: v('buyerAddress'),
+    buyerGSTIN: v('buyerGSTIN'), buyerState: v('buyerState'),
+    paymentMode: v('paymentMode'), supplyType: document.getElementById('supplyType').value,
+    deliveryNote: v('deliveryNote'), validTill: v('validTill'),
+    declaration: v('declaration'),
+    // Extra fields
+    refNo: v('refNo'), refDate: v('refDate'),
+    otherRef: v('otherRef'), buyerOrderNo: v('buyerOrderNo'), buyerOrderDate: v('buyerOrderDate'),
+    dispatchDocNo: v('dispatchDocNo'), deliveryNoteDate: v('deliveryNoteDate'),
+    dispatchedThrough: v('dispatchedThrough'), vehicleNo: v('vehicleNo'), destination: v('destination'),
+    items: [],
+    savedAt: new Date().toISOString()
+  };
+
+  document.querySelectorAll('.item-row').forEach(row => {
+    const iid = row.id.replace('item-', '');
+    doc.items.push({
+      desc: v('desc-'+iid), hsn: v('hsn-'+iid),
+      qty: v('qty-'+iid), rate: v('rate-'+iid),
+      gst: document.getElementById('gst-'+iid)?.value
+    });
+  });
+
+  const saved = getSaved();
+  const idx = saved.findIndex(s => s.id === id);
+  if(idx >= 0) saved[idx] = doc; else saved.unshift(doc);
+  localStorage.setItem('gst_saved', JSON.stringify(saved));
+  updateSavedCount();
+  renderSaved();
+  showToast('💾 Saved!', 'success');
+}
+
+function loadDocument(id) {
+  const saved = getSaved();
+  const doc = saved.find(s => s.id === id);
+  if(!doc) return;
+  currentId = id;
+
+  setMode(doc.mode || 'invoice');
+  set('docNumber', doc.docNumber); set('docDate', doc.docDate);
+  set('buyerName', doc.buyerName); set('buyerAddress', doc.buyerAddress);
+  set('buyerGSTIN', doc.buyerGSTIN); set('buyerState', doc.buyerState);
+  set('paymentMode', doc.paymentMode); set('deliveryNote', doc.deliveryNote);
+  set('declaration', doc.declaration);
+  // Extra fields
+  ['refNo','refDate','otherRef','buyerOrderNo','buyerOrderDate',
+   'dispatchDocNo','deliveryNoteDate','dispatchedThrough','vehicleNo','destination'].forEach(id => {
+    if(doc[id]) { set(id, doc[id]); }
+  });
+  // Open extra section if any extra field has value
+  const hasExtra = ['refNo','otherRef','buyerOrderNo','dispatchDocNo','dispatchedThrough','vehicleNo','destination'].some(id => doc[id]);
+  if(hasExtra) {
+    document.getElementById('extraFields').style.display = '';
+    document.getElementById('extraToggleBtn').textContent = '➖ Additional Details (Reference, Dispatch, Buyer Order)';
+  }
+  document.getElementById('supplyType').value = doc.supplyType || 'intra';
+  updateGSTType();
+
+  document.getElementById('itemsContainer').innerHTML = '';
+  itemCount = 0;
+  (doc.items || []).forEach(item => {
+    addItem();
+    const id2 = itemCount;
+    set('desc-'+id2, item.desc); set('hsn-'+id2, item.hsn);
+    set('qty-'+id2, item.qty); set('rate-'+id2, item.rate);
+    if(document.getElementById('gst-'+id2)) document.getElementById('gst-'+id2).value = item.gst;
+  });
+  updateSummary();
+  showTab('form');
+  showToast('📂 Document loaded!');
+}
+
+function deleteDocument(id) {
+  if(!confirm('Delete this document?')) return;
+  const saved = getSaved().filter(s => s.id !== id);
+  localStorage.setItem('gst_saved', JSON.stringify(saved));
+  renderSaved();
+  updateSavedCount();
+  showToast('🗑️ Deleted');
+}
+
+function getSaved() { try { return JSON.parse(localStorage.getItem('gst_saved') || '[]'); } catch(e) { return []; } }
+
+function renderSaved() {
+  const saved = getSaved();
+  const list = document.getElementById('savedList');
+  updateSavedCount();
+  if(!saved.length) {
+    list.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:24px 0">No saved documents yet. Create one!</p>';
+    return;
+  }
+  list.innerHTML = saved.map(doc => `
+    <div class="saved-item">
+      <div class="saved-item-info" onclick="loadDocument('${doc.id}')">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+          <span class="badge badge-${doc.mode}">${doc.mode === 'invoice' ? '📄 Invoice' : '📋 Quotation'}</span>
+          <h4>${doc.docNumber || '(No Number)'}</h4>
+        </div>
+        <span>${doc.buyerName || 'Unknown Buyer'} &nbsp;·&nbsp; ${formatDate(doc.docDate)} &nbsp;·&nbsp; Saved ${timeAgo(doc.savedAt)}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-navy btn-sm" onclick="loadDocument('${doc.id}')">Open</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteDocument('${doc.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateSavedCount() {
+  document.getElementById('savedCount').textContent = getSaved().length;
+}
+
+function newDocument() {
+  if(!confirm('Start a new document? Unsaved changes will be lost.')) return;
+  currentId = null;
+  // Reset buyer/invoice fields only — seller/bank details are the saved
+  // company profile and must NOT be cleared by starting a new document.
+  ['docNumber','buyerName','buyerAddress','buyerGSTIN','deliveryNote',
+   'refNo','refDate','otherRef','buyerOrderNo','buyerOrderDate',
+   'dispatchDocNo','deliveryNoteDate','dispatchedThrough','vehicleNo','destination'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById('extraFields').style.display = 'none';
+  document.getElementById('extraToggleBtn').textContent = '➕ Additional Details (Reference, Dispatch, Buyer Order)';
+  document.getElementById('buyerState').value = '';
+  document.getElementById('docDate').valueAsDate = new Date();
+  document.getElementById('docNumber').value = getNextInvoiceNumber();
+  document.getElementById('paymentMode').value = 'Bank Transfer';
+  document.getElementById('supplyType').value = 'intra';
+  document.getElementById('declaration').value = 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.';
+  updateGSTType();
+  // Clear items and add 3 blank rows
+  document.getElementById('itemsContainer').innerHTML = '';
+  itemCount = 0;
+  addItem(); addItem(); addItem();
+  updateSummary();
+  setMode('invoice');
+  showTab('form');
+  showToast('🆕 New document started');
+}
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function set(id, val) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+    el.value = val || '';
+  } else {
+    el.textContent = val || '';
+  }
+}
+
+function formatDate(d) {
+  if(!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff/60000);
+  if(mins < 1) return 'just now';
+  if(mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins/60);
+  if(hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs/24) + 'd ago';
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+
+function numberToWords(n) {
+  if(n === 0) return 'Zero';
+  if(n < 0) return 'Minus ' + numberToWords(-n);
+  let str = '';
+  if(Math.floor(n/10000000)) { str += numberToWords(Math.floor(n/10000000)) + ' Crore '; n %= 10000000; }
+  if(Math.floor(n/100000)) { str += numberToWords(Math.floor(n/100000)) + ' Lakh '; n %= 100000; }
+  if(Math.floor(n/1000)) { str += numberToWords(Math.floor(n/1000)) + ' Thousand '; n %= 1000; }
+  if(Math.floor(n/100)) { str += ones[Math.floor(n/100)] + ' Hundred '; n %= 100; }
+  if(n > 0) { if(n < 20) str += ones[n]; else str += tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : ''); }
+  return str.trim();
+}
+</script>
+
+<!-- HSN Datalist -->
+<datalist id="hsnList">
+  <option value="94054090">LED Lights / Fixtures</option>
+  <option value="85044090">Transformers / Inverters</option>
+  <option value="85362090">MCB / Circuit Breakers</option>
+  <option value="85364190">Switches (electrical)</option>
+  <option value="85444290">Electric Wires / Cables</option>
+  <option value="85366990">Sockets / Plugs</option>
+  <option value="85371090">Distribution Boards (DB)</option>
+  <option value="85389090">Switchgear Parts</option>
+  <option value="85021390">Generators / DG Sets</option>
+  <option value="85016200">AC Motors</option>
+  <option value="84145990">Fans / Exhaust Fans</option>
+  <option value="85122000">Street / Flood Lights</option>
+  <option value="85311090">Alarm / Indicator Systems</option>
+  <option value="39172390">PVC Conduit Pipes</option>
+  <option value="73063090">MS / GI Pipes</option>
+  <option value="998314">IT Services</option>
+  <option value="998313">Software Development</option>
+  <option value="997212">Construction Services</option>
+  <option value="995411">Electrical Installation Services</option>
+</datalist>
+
+<script>
+if('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(() => {
+      console.log('SW registered');
+    }).catch(e => console.log('SW failed', e));
+  });
+}
+</script>
+
+<!-- ════════════════════════════════════════════════════════
+     SETUP WIZARD
+     ════════════════════════════════════════════════════════ -->
+<div id="setup-wizard" style="display:none">
+  <div id="setup-overlay"></div>
+  <div id="setup-modal">
+
+    <!-- Progress Bar -->
+    <div id="setup-progress">
+      <div id="setup-progress-bar"></div>
+    </div>
+
+    <!-- Step Indicators -->
+    <div id="setup-steps">
+      <div class="setup-step active" id="step-dot-1">1</div>
+      <div class="setup-step-line"></div>
+      <div class="setup-step" id="step-dot-2">2</div>
+      <div class="setup-step-line"></div>
+      <div class="setup-step" id="step-dot-3">3</div>
+    </div>
+
+    <!-- STEP 1: Welcome -->
+    <div class="setup-page" id="setup-page-1">
+      <div id="setup-logo">⚡</div>
+      <h2 id="setup-title">Welcome to VoltaBill</h2>
+      <p id="setup-subtitle">Let's set up your business in 3 quick steps.<br>This takes less than 2 minutes!</p>
+      <div id="setup-welcome-features">
+        <div class="setup-feature">✅ Create GST invoices & quotations</div>
+        <div class="setup-feature">✅ Auto PDF generation</div>
+        <div class="setup-feature">✅ Buyer & Item master</div>
+        <div class="setup-feature">✅ AI assistant (Volta)</div>
+      </div>
+      <button class="setup-btn-primary" onclick="WIZARD.goTo(2)">Get Started →</button>
+    </div>
+
+    <!-- STEP 2: Company Details -->
+    <div class="setup-page" id="setup-page-2" style="display:none">
+      <h2 id="setup-title">Your Company Details</h2>
+      <p id="setup-subtitle">This will be your <strong>default seller info</strong> — auto-filled in every invoice you create.</p>
+
+      <div class="setup-field">
+        <label>Company / Business Name <span class="req">*</span></label>
+        <input type="text" id="wiz-sellerName" placeholder="e.g. ABC Electricals" />
+        <span class="setup-hint">Your registered business name</span>
+      </div>
+      <div class="setup-field">
+        <label>Business Address <span class="req">*</span></label>
+        <textarea id="wiz-sellerAddress" rows="3" placeholder="Shop No, Street, City - Pincode"></textarea>
+        <span class="setup-hint">Full address as it appears on invoices</span>
+      </div>
+      <div class="setup-row">
+        <div class="setup-field">
+          <label>GSTIN</label>
+          <input type="text" id="wiz-sellerGSTIN" placeholder="27AAAAA0000A1Z5" maxlength="15" style="text-transform:uppercase" />
+          <span class="setup-hint">15-digit GST number</span>
+        </div>
+        <div class="setup-field">
+          <label>State</label>
+          <select id="wiz-sellerState">
+            <option value="">-- Select State --</option>
+            <option value="Andhra Pradesh, Code: 37">Andhra Pradesh (37)</option>
+            <option value="Arunachal Pradesh, Code: 12">Arunachal Pradesh (12)</option>
+            <option value="Assam, Code: 18">Assam (18)</option>
+            <option value="Bihar, Code: 10">Bihar (10)</option>
+            <option value="Chhattisgarh, Code: 22">Chhattisgarh (22)</option>
+            <option value="Delhi, Code: 07">Delhi (07)</option>
+            <option value="Goa, Code: 30">Goa (30)</option>
+            <option value="Gujarat, Code: 24">Gujarat (24)</option>
+            <option value="Haryana, Code: 06">Haryana (06)</option>
+            <option value="Himachal Pradesh, Code: 02">Himachal Pradesh (02)</option>
+            <option value="Jharkhand, Code: 20">Jharkhand (20)</option>
+            <option value="Karnataka, Code: 29">Karnataka (29)</option>
+            <option value="Kerala, Code: 32">Kerala (32)</option>
+            <option value="Madhya Pradesh, Code: 23">Madhya Pradesh (23)</option>
+            <option value="Maharashtra, Code: 27">Maharashtra (27)</option>
+            <option value="Manipur, Code: 14">Manipur (14)</option>
+            <option value="Meghalaya, Code: 17">Meghalaya (17)</option>
+            <option value="Mizoram, Code: 15">Mizoram (15)</option>
+            <option value="Nagaland, Code: 13">Nagaland (13)</option>
+            <option value="Odisha, Code: 21">Odisha (21)</option>
+            <option value="Punjab, Code: 03">Punjab (03)</option>
+            <option value="Rajasthan, Code: 08">Rajasthan (08)</option>
+            <option value="Sikkim, Code: 11">Sikkim (11)</option>
+            <option value="Tamil Nadu, Code: 33">Tamil Nadu (33)</option>
+            <option value="Telangana, Code: 36">Telangana (36)</option>
+            <option value="Tripura, Code: 16">Tripura (16)</option>
+            <option value="Uttar Pradesh, Code: 09">Uttar Pradesh (09)</option>
+            <option value="Uttarakhand, Code: 05">Uttarakhand (05)</option>
+            <option value="West Bengal, Code: 19">West Bengal (19)</option>
+          </select>
+          <span class="setup-hint">Your business state</span>
+        </div>
+      </div>
+      <div class="setup-row">
+        <div class="setup-field">
+          <label>Email</label>
+          <input type="email" id="wiz-sellerEmail" placeholder="you@business.com" />
+        </div>
+        <div class="setup-field">
+          <label>Phone</label>
+          <input type="tel" id="wiz-sellerPhone" placeholder="+91 98765 43210" />
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="setup-btn-secondary" onclick="WIZARD.goTo(1)">← Back</button>
+        <button class="setup-btn-primary" onclick="WIZARD.goTo(3)" style="flex:1">Continue →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Bank Details -->
+    <div class="setup-page" id="setup-page-3" style="display:none">
+      <h2 id="setup-title">Bank Details</h2>
+      <p id="setup-subtitle">Your bank info will appear on every invoice for easy payment. <em>You can skip this and add later.</em></p>
+
+      <div class="setup-field">
+        <label>Bank Name</label>
+        <input type="text" id="wiz-bankName" placeholder="e.g. Bank of Maharashtra" />
+      </div>
+      <div class="setup-field">
+        <label>Account Number</label>
+        <input type="text" id="wiz-bankAccNo" placeholder="Your account number" />
+      </div>
+      <div class="setup-row">
+        <div class="setup-field">
+          <label>IFSC Code</label>
+          <input type="text" id="wiz-bankIFSC" placeholder="MAHB0000312" style="text-transform:uppercase" />
+        </div>
+        <div class="setup-field">
+          <label>Branch</label>
+          <input type="text" id="wiz-bankBranch" placeholder="Branch name" />
+        </div>
+      </div>
+
+      <div id="setup-default-notice">
+        <span>ℹ️</span>
+        <span>All details you've entered will be saved as your <strong>default profile</strong> and auto-filled in every new invoice.</span>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="setup-btn-secondary" onclick="WIZARD.goTo(2)">← Back</button>
+        <button class="setup-btn-primary" onclick="WIZARD.finish()" style="flex:1">✅ Save & Start Using</button>
+      </div>
+      <button onclick="WIZARD.skip()" style="background:none;border:none;color:#8facc8;font-size:12px;cursor:pointer;margin-top:10px;display:block;width:100%;text-align:center">Skip bank details for now</button>
+    </div>
+
+  </div>
+</div>
+
+<style>
+#setup-overlay {
+  position:fixed; inset:0; background:rgba(10,20,40,0.85);
+  z-index:10000; backdrop-filter:blur(4px);
+}
+#setup-modal {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:10001; background:#fff; border-radius:20px;
+  width:min(520px, 95vw); max-height:90vh; overflow-y:auto;
+  padding:32px 28px; box-shadow:0 30px 80px rgba(0,0,0,0.3);
+}
+#setup-progress {
+  height:4px; background:#e8edf5; border-radius:2px; margin-bottom:24px;
+}
+#setup-progress-bar {
+  height:100%; background:linear-gradient(90deg,#1a3a5c,#c9a84c);
+  border-radius:2px; transition:width 0.4s ease; width:33%;
+}
+#setup-steps {
+  display:flex; align-items:center; justify-content:center;
+  gap:0; margin-bottom:28px;
+}
+.setup-step {
+  width:32px; height:32px; border-radius:50%;
+  background:#e8edf5; color:#8facc8; font-size:13px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.3s;
+}
+.setup-step.active { background:#1a3a5c; color:#c9a84c; }
+.setup-step.done { background:#22c55e; color:#fff; }
+.setup-step-line { flex:1; max-width:60px; height:2px; background:#e8edf5; }
+#setup-logo {
+  font-size:48px; text-align:center; margin-bottom:16px;
+}
+#setup-title {
+  font-size:22px; font-weight:700; color:#1a2638; text-align:center;
+  margin:0 0 8px; font-family:'IBM Plex Sans',sans-serif;
+}
+#setup-subtitle {
+  font-size:14px; color:#4a5a70; text-align:center;
+  margin:0 0 24px; line-height:1.6;
+}
+#setup-welcome-features {
+  background:#f8fafc; border-radius:12px; padding:16px 20px;
+  margin-bottom:24px; display:flex; flex-direction:column; gap:8px;
+}
+.setup-feature { font-size:14px; color:#1a2638; }
+.setup-field { margin-bottom:14px; }
+.setup-field label {
+  display:block; font-size:12px; font-weight:600;
+  color:#4a5a70; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px;
+}
+.setup-field input, .setup-field textarea, .setup-field select {
+  width:100%; padding:10px 12px; border:1.5px solid #d0d7e2;
+  border-radius:10px; font-size:14px; outline:none;
+  font-family:'IBM Plex Sans',sans-serif; box-sizing:border-box;
+  transition:border 0.2s; color:#1a2638; background:#fff;
+}
+.setup-field input:focus, .setup-field textarea:focus, .setup-field select:focus {
+  border-color:#c9a84c;
+}
+.setup-hint { font-size:11px; color:#8facc8; margin-top:3px; display:block; }
+.req { color:#e74c3c; }
+.setup-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+#setup-default-notice {
+  background:#fff8e6; border:1px solid #f0d080; border-radius:10px;
+  padding:12px 14px; font-size:13px; color:#7a5a10;
+  display:flex; gap:8px; align-items:flex-start; margin-top:16px;
+}
+.setup-btn-primary {
+  background:linear-gradient(135deg,#1a3a5c,#234d78); color:#c9a84c;
+  border:none; border-radius:10px; padding:12px 24px;
+  font-size:15px; font-weight:700; cursor:pointer;
+  font-family:'IBM Plex Sans',sans-serif; transition:all 0.2s;
+  width:100%;
+}
+.setup-btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(26,58,92,0.3); }
+.setup-btn-secondary {
+  background:#f0f4f8; color:#4a5a70; border:1.5px solid #d0d7e2;
+  border-radius:10px; padding:12px 18px; font-size:14px;
+  cursor:pointer; font-family:'IBM Plex Sans',sans-serif;
+}
+@media(max-width:480px) {
+  #setup-modal { padding:24px 18px; }
+  .setup-row { grid-template-columns:1fr; }
+}
+</style>
+
+<script>
+// ═══════════════════════════════════════
+// HELP / ABOUT / LEGAL
+// ═══════════════════════════════════════
+function toggleHamburger() {
+  const menu = document.getElementById('hamburger-menu');
+  menu.classList.toggle('open');
+  const btn = document.getElementById('hamburger-btn');
+  btn.textContent = menu.classList.contains('open') ? '✕' : '☰';
+}
+// Close hamburger on outside click
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('hamburger-menu');
+  const btn = document.getElementById('hamburger-btn');
+  if(menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('open');
+    btn.textContent = '☰';
+  }
+});
+// Sync saved count in mobile menu
+function updateSavedCount() {
+  const count = getSaved().length;
+  const el = document.getElementById('savedCount');
+  const el2 = document.getElementById('savedCountMobile');
+  if(el) el.textContent = count;
+  if(el2) el2.textContent = count;
+}
+
+function showHelp() {
+  document.getElementById('help-modal').style.display = 'flex';
+}
+
+function showAbout() {
+  document.getElementById('about-modal').style.display = 'flex';
+  showLegal('terms', document.querySelector('.legal-tab'));
+}
+
+function showLegal(type, el) {
+  ['terms','privacy','disclaimer'].forEach(t => {
+    document.getElementById('legal-'+t).style.display = t===type ? 'block' : 'none';
+  });
+  document.querySelectorAll('.legal-tab').forEach(tab => tab.classList.remove('active'));
+  if(el) el.classList.add('active');
+}
+
+// Close modals on overlay click
+['help-modal','about-modal','dup-modal'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('click', function(e) {
+    if(e.target === this) this.style.display = 'none';
+  });
+});
+
+// ═══════════════════════════════════════
+// DUPLICATE DETECTION
+// ═══════════════════════════════════════
+let dupPendingCallback = null;
+
+function checkDuplicates(onNoDuplicates) {
+  const rows = document.querySelectorAll('#itemsContainer .item-row');
+  const seen = {};
+  const dups = [];
+  rows.forEach(row => {
+    const desc = row.querySelector('[id^="desc-"]')?.value?.trim().toLowerCase();
+    if(!desc) return;
+    if(seen[desc]) {
+      if(!dups.includes(desc)) dups.push(desc);
+    } else {
+      seen[desc] = true;
+    }
+  });
+
+  if(dups.length > 0) {
+    // Show duplicate modal
+    const count = dups.length;
+    document.getElementById('dup-msg').textContent = `Found ${count} duplicate item(s) in your invoice:`;
+    document.getElementById('dup-list').innerHTML = dups.map(d =>
+      `⚠️ "<strong>${d}</strong>" appears more than once`
+    ).join('<br>');
+    document.getElementById('dup-modal').style.display = 'flex';
+    dupPendingCallback = onNoDuplicates;
+  } else {
+    if(onNoDuplicates) onNoDuplicates();
+  }
+}
+
+function closeDupModal() {
+  document.getElementById('dup-modal').style.display = 'none';
+  dupPendingCallback = null;
+}
+
+function dupChoice(removeThemn) {
+  document.getElementById('dup-modal').style.display = 'none';
+  if(removeThemn) {
+    // Remove duplicates
+    const rows = document.querySelectorAll('#itemsContainer .item-row');
+    const seen = new Set();
+    let removed = 0;
+    rows.forEach(row => {
+      const desc = row.querySelector('[id^="desc-"]')?.value?.trim().toLowerCase();
+      if(!desc) return;
+      if(seen.has(desc)) { row.remove(); removed++; }
+      else seen.add(desc);
+    });
+    updateSummary();
+    showToast(`✅ Removed ${removed} duplicate(s)!`, 'success');
+  } else {
+    showToast('⚠️ Keeping all items as-is', '');
+  }
+  // Proceed with callback (e.g. save)
+  if(dupPendingCallback) {
+    dupPendingCallback();
+    dupPendingCallback = null;
+  }
+}
+
+const WIZARD = (() => {
+
+  function show() {
+    // Pre-fill wizard fields with previously saved company data,
+    // so opening Settings again doesn't show a blank form and
+    // risk overwriting existing details with empty values.
+    try {
+      const existing = JSON.parse(localStorage.getItem('gst_company') || '{}');
+      const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+      set('wiz-sellerName', existing.sellerName);
+      set('wiz-sellerAddress', existing.sellerAddress);
+      set('wiz-sellerGSTIN', existing.sellerGSTIN);
+      set('wiz-sellerState', existing.sellerState);
+      set('wiz-sellerEmail', existing.sellerEmail);
+      set('wiz-sellerPhone', existing.sellerPhone);
+      set('wiz-bankName', existing.bankName);
+      set('wiz-bankAccNo', existing.bankAccNo);
+      set('wiz-bankIFSC', existing.bankIFSC);
+      set('wiz-bankBranch', existing.bankBranch);
+    } catch (e) {}
+
+    document.getElementById('setup-wizard').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hide() {
+    document.getElementById('setup-wizard').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function goTo(step) {
+    // Validate step 2 before proceeding to step 3
+    if(step === 3) {
+      const name = document.getElementById('wiz-sellerName').value.trim();
+      if(!name) {
+        document.getElementById('wiz-sellerName').focus();
+        document.getElementById('wiz-sellerName').style.borderColor = '#e74c3c';
+        showToast('⚠️ Please enter your Company Name', 'warn');
+        return;
+      }
+      document.getElementById('wiz-sellerName').style.borderColor = '';
+    }
+
+    // Hide all pages
+    [1,2,3].forEach(i => {
+      document.getElementById(`setup-page-${i}`).style.display = 'none';
+      const dot = document.getElementById(`step-dot-${i}`);
+      dot.classList.remove('active','done');
+      if(i < step) dot.classList.add('done'), dot.textContent = '✓';
+      else if(i === step) dot.classList.add('active'), dot.textContent = i;
+      else dot.textContent = i;
+    });
+
+    document.getElementById(`setup-page-${step}`).style.display = 'block';
+    document.getElementById('setup-progress-bar').style.width = (step * 33.33) + '%';
+  }
+
+  function finish() {
+    const get = id => document.getElementById(id)?.value?.trim() || '';
+
+    // Save to localStorage
+    const company = {
+      sellerName:    get('wiz-sellerName'),
+      sellerAddress: get('wiz-sellerAddress'),
+      sellerGSTIN:   get('wiz-sellerGSTIN').toUpperCase(),
+      sellerState:   get('wiz-sellerState'),
+      sellerEmail:   get('wiz-sellerEmail'),
+      sellerPhone:   get('wiz-sellerPhone'),
+      bankName:      get('wiz-bankName'),
+      bankAccNo:     get('wiz-bankAccNo'),
+      bankIFSC:      get('wiz-bankIFSC').toUpperCase(),
+      bankBranch:    get('wiz-bankBranch'),
+    };
+    localStorage.setItem('gst_company', JSON.stringify(company));
+    localStorage.setItem('setup_done', '1');
+
+    // Fill main form
+    const set = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
+    set('sellerName',    company.sellerName);
+    set('sellerAddress', company.sellerAddress);
+    set('sellerGSTIN',   company.sellerGSTIN);
+    set('sellerState',   company.sellerState);
+    set('sellerEmail',   company.sellerEmail);
+    set('sellerPhone',   company.sellerPhone);
+    set('bankName',      company.bankName);
+    set('bankAccNo',     company.bankAccNo);
+    set('bankIFSC',      company.bankIFSC);
+    set('bankBranch',    company.bankBranch);
+
+    hide();
+    showToast('✅ Setup complete! Your details are saved as default.', 'success');
+
+    // Welcome Volta message after 1 sec
+    setTimeout(() => {
+      const panel = document.getElementById('volta-panel');
+      if(panel) {
+        VOLTA.toggle();
+        setTimeout(() => {
+          const msg = document.getElementById('volta-messages');
+          if(msg) {
+            msg.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'volta-msg ai';
+            div.innerHTML = `<div class="volta-avatar">⚡</div>
+              <div class="volta-bubble">Welcome, <strong>${company.sellerName || 'there'}</strong>! 🎉<br><br>
+              Your company is all set up! Now let's create your first invoice.<br><br>
+              Try: <em>"Create invoice for [buyer name] — [items]"</em></div>`;
+            msg.appendChild(div);
+          }
+        }, 400);
+      }
+    }, 1200);
+  }
+
+  function skip() {
+    // Save whatever is filled
+    finish();
+  }
+
+  function checkFirstTime() {
+    const done = localStorage.getItem('setup_done');
+    const company = localStorage.getItem('gst_company');
+    if(!done && !company) {
+      setTimeout(() => { show(); goTo(1); }, 500);
+    }
+  }
+
+  return { show, hide, goTo, finish, skip, checkFirstTime };
+})();
+
+// Check on load
+window.addEventListener('load', () => WIZARD.checkFirstTime());
+</script>
+</body>
+</html>
