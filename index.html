@@ -416,7 +416,7 @@
     <!-- Desktop buttons -->
     <div class="desktop-actions">
       <button class="btn btn-ghost btn-sm" onclick="showTab('saved')">📁 Saved (<span id="savedCount">0</span>)</button>
-      <button class="btn btn-ghost btn-sm" onclick="WIZARD.show();WIZARD.goTo(2)">⚙️ Settings</button>
+      <!--<button class="btn btn-ghost btn-sm" onclick="WIZARD.show();WIZARD.goTo(2)">⚙️ Settings</button>-->
       <button class="btn btn-ghost btn-sm" onclick="showHelp()">❓ Help</button>
       <button class="btn btn-ghost btn-sm" onclick="showAbout()">ℹ️ About</button>
       <button class="btn btn-ghost btn-sm" onclick="newDocument()">+ New</button>
@@ -431,7 +431,7 @@
     <button onclick="newDocument();toggleHamburger()">➕ New</button>
     <button onclick="showHelp();toggleHamburger()">❓ Help & Commands</button>
     <button onclick="showAbout();toggleHamburger()">ℹ️ About VoltaBill</button>
-    <button onclick="WIZARD.show();WIZARD.goTo(2);toggleHamburger()">⚙️ Setup / Settings</button>
+    <!--<button onclick="WIZARD.show();WIZARD.goTo(2);toggleHamburger()">⚙️ Setup / Settings</button>-->
   </div>
 </div>
 
@@ -2311,7 +2311,7 @@ const WIZARD = (() => {
   }
 
   return { show, hide, goTo, finish, skip, checkFirstTime };
-})();
+})();*/
 
 // Check on load
 //window.addEventListener('load', () => WIZARD.checkFirstTime());
