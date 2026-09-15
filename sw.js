@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gst-invoice-pro-v14';
+const CACHE_NAME = 'gst-invoice-pro-v15';
 const ASSETS = [
   '/',
   '/index.html',
